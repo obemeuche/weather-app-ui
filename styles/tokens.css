@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=DM+Serif+Display&display=swap');
 
-:root {
+/* ── Dark theme (default) ── */
+:root,
+body:not(.light-theme) {
   /* ── Backgrounds ── */
   --color-bg-page:     #0A0F1E;
   --color-bg-surface:  rgba(255, 255, 255, 0.05);
@@ -74,4 +76,33 @@
   --radius-lg:   16px;
   --radius-xl:   24px;
   --radius-full: 9999px;
+}
+
+/* ── Light theme overrides ── */
+body.light-theme {
+  --color-bg-page:     #F0F4F8;
+  --color-bg-surface:  rgba(255, 255, 255, 0.80);
+  --color-bg-elevated: rgba(255, 255, 255, 0.95);
+  --color-bg-overlay:  rgba(0, 0, 0, 0.45);
+
+  --color-accent-primary:   #2D8FB5;
+  --color-accent-secondary: #7C3AED;
+  --color-accent-warm:      #D97706;
+
+  --color-success: #16A34A;
+  --color-warning: #CA8A04;
+  --color-danger:  #DC2626;
+  --color-info:    #2D8FB5;
+
+  --color-text-primary:   #0F172A;
+  --color-text-secondary: rgba(15, 23, 42, 0.65);
+  --color-text-muted:     rgba(15, 23, 42, 0.40);
+  --color-text-disabled:  rgba(15, 23, 42, 0.25);
+
+  --color-border-subtle:  rgba(15, 23, 42, 0.08);
+  --color-border-default: rgba(15, 23, 42, 0.15);
+  --color-border-accent:  rgba(45, 143, 181, 0.35);
+
+  --color-shimmer-base: rgba(15, 23, 42, 0.06);
+  --color-shimmer-peak: rgba(15, 23, 42, 0.12);
 }

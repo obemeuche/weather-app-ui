@@ -3,9 +3,6 @@
 const API_BASE_URL = '/api/v1';
 
 // ── Icon mapping: Visual Crossing → our SVG keys ──────────────────────────────
-// VC icons: clear-day, clear-night, cloudy, fog, partly-cloudy-day,
-//           partly-cloudy-night, rain, showers-day, showers-night,
-//           sleet, snow, thunder-rain, thunder-showers-day, wind
 function mapVCIcon(vcIcon) {
   if (!vcIcon) return 'cloudy';
   const i = vcIcon.toLowerCase();
@@ -18,7 +15,7 @@ function mapVCIcon(vcIcon) {
   return 'partly-cloudy';
 }
 
-// ── VC condition → emoji (for hourly cards & forecast rows) ───────────────────
+// ── VC condition → emoji ───────────────────────────────────────────────────────
 function conditionEmoji(vcIcon) {
   if (!vcIcon) return '🌡';
   const i = vcIcon.toLowerCase();
@@ -43,6 +40,47 @@ function uvLabel(uv) {
   return 'Extreme';
 }
 
+// ── Wind direction degrees → compass label ─────────────────────────────────────
+function windDirLabel(deg) {
+  if (deg == null) return '';
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+// ── Moon phase (0–1) → label + emoji ──────────────────────────────────────────
+function moonPhaseInfo(phase) {
+  if (phase == null) return { label: 'Unknown', emoji: '🌑' };
+  if (phase < 0.03 || phase > 0.97) return { label: 'New Moon',        emoji: '🌑' };
+  if (phase < 0.22)                  return { label: 'Waxing Crescent', emoji: '🌒' };
+  if (phase < 0.28)                  return { label: 'First Quarter',   emoji: '🌓' };
+  if (phase < 0.47)                  return { label: 'Waxing Gibbous',  emoji: '🌔' };
+  if (phase < 0.53)                  return { label: 'Full Moon',       emoji: '🌕' };
+  if (phase < 0.72)                  return { label: 'Waning Gibbous',  emoji: '🌖' };
+  if (phase < 0.78)                  return { label: 'Last Quarter',    emoji: '🌗' };
+  return                                    { label: 'Waning Crescent', emoji: '🌘' };
+}
+
+// ── Pressure label ─────────────────────────────────────────────────────────────
+function pressureLabel(hpa) {
+  if (hpa < 1000) return 'Low';
+  if (hpa > 1020) return 'High';
+  return 'Normal';
+}
+
+// ── Visibility label ───────────────────────────────────────────────────────────
+function visibilityLabel(km) {
+  if (km >= 10) return 'Very clear';
+  if (km >= 5)  return 'Good';
+  if (km >= 2)  return 'Moderate';
+  return 'Poor';
+}
+
+// ── Precip type → display string ──────────────────────────────────────────────
+function precipTypeLabel(types) {
+  if (!types || types.length === 0) return '';
+  return types.map(t => t.charAt(0).toUpperCase() + t.slice(1)).join(', ');
+}
+
 // ── Format "06:43:58" → "6:43 AM" ─────────────────────────────────────────────
 function formatTime12(timeStr) {
   if (!timeStr) return '';
@@ -64,17 +102,12 @@ function generateHourly(currentConditions, days) {
   const hours = [];
   for (let offset = 0; offset < 10; offset++) {
     const h = (currentHour + offset) % 24;
-    // Simulate a bell-curve temperature peaking around 15:00
     const factor = Math.sin(((h - 6) / 18) * Math.PI);
     const tempC = tempmin + Math.max(0, factor) * range;
 
-    let icon;
-    if (offset === 0) {
-      icon = conditionEmoji(currentConditions.icon);
-    } else {
-      // Gradually transition toward tomorrow's icon by end of day
-      icon = conditionEmoji(today.icon);
-    }
+    const icon = offset === 0
+      ? conditionEmoji(currentConditions.icon)
+      : conditionEmoji(today.icon);
 
     hours.push({
       time: offset === 0 ? 'Now' : `${String(h).padStart(2, '0')}:00`,
@@ -94,10 +127,10 @@ const DEFAULT_SETTINGS = {
   autoRefresh:          true,
   notifyDailySummary:   true,
   notifySevereAlerts:   true,
+  theme:                'dark',
 };
 
-// ── Static popular locations for search suggestions ───────────────────────────
-// These are shown as "Popular" — we'll fetch their live temps lazily
+// ── Static popular locations ───────────────────────────────────────────────────
 const POPULAR_LOCATIONS_STATIC = [
   { city: 'New York',   country: 'US',        flag: '🇺🇸' },
   { city: 'Tokyo',      country: 'Japan',     flag: '🇯🇵' },
@@ -112,7 +145,11 @@ const apiCache = {};
 
 async function fetchWeather(city) {
   const key = city.toLowerCase();
-  const ttlMs = (DEFAULT_SETTINGS.cacheDurationMinutes * 60 * 1000);
+  // Use live settings if available, otherwise fall back to default
+  const ttlMinutes = (typeof settings !== 'undefined')
+    ? settings.cacheDurationMinutes
+    : DEFAULT_SETTINGS.cacheDurationMinutes;
+  const ttlMs = ttlMinutes * 60 * 1000;
 
   if (apiCache[key] && (Date.now() - apiCache[key].fetchedAt) < ttlMs) {
     return { ...apiCache[key].data, fromCache: true, cachedAt: new Date(apiCache[key].fetchedAt) };
@@ -134,42 +171,60 @@ function parseWeatherResponse(raw) {
   const cc   = raw.currentConditions;
   const days = raw.days || [];
 
-  // Derive city name from resolvedAddress
+  // Derive city/country from resolvedAddress
   const resolvedParts = (raw.resolvedAddress || raw.address || '').split(',').map(s => s.trim());
   const city    = resolvedParts[0] || raw.address || 'Unknown';
-  // Country is the last part only if there are ≥ 2 parts (avoid repeating city name)
   const country = resolvedParts.length >= 2 ? resolvedParts[resolvedParts.length - 1] : '';
 
-  // Today's overview (use days[0] for hi/lo + icon)
   const today = days[0] || {};
 
-  const forecast = days.slice(0, 7).map((d, i) => {
+  // Up to 15-day forecast with precipitation data
+  const forecast = days.slice(0, 15).map((d, i) => {
     const date = new Date(d.datetime);
     const dayLabel = i === 0 ? 'Today' : date.toLocaleDateString('en-GB', { weekday: 'short' });
+    const precipTypes = d.preciptype || [];
     return {
-      day:  dayLabel,
-      icon: conditionEmoji(d.icon),
-      lo:   Math.round(d.tempmin),
-      hi:   Math.round(d.tempmax),
+      day:        dayLabel,
+      icon:       conditionEmoji(d.icon),
+      lo:         Math.round(d.tempmin),
+      hi:         Math.round(d.tempmax),
+      precipProb: Math.round(d.precipprob || 0),
+      precipType: precipTypeLabel(precipTypes),
+      conditions: d.conditions || '',
     };
   });
 
   const hourly = generateHourly(cc, days);
 
+  const moon = moonPhaseInfo(today.moonphase);
+
   return {
     city,
     country,
-    temperatureC: Math.round(cc.temp),
-    feelsLikeC:   Math.round(cc.feelslike),
-    condition:    cc.conditions,
-    conditionIcon: mapVCIcon(cc.icon),
-    humidity:     Math.round(cc.humidity),
-    windKmh:      Math.round(cc.windspeed),
-    uvIndex:      Math.round(cc.uvindex),
-    pressure:     Math.round(cc.pressure),
-    visibility:   Math.round(cc.visibility * 10) / 10,
-    sunrise:      formatTime12(cc.sunrise),
-    sunset:       formatTime12(cc.sunset),
+    temperatureC:   Math.round(cc.temp),
+    feelsLikeC:     Math.round(cc.feelslike),
+    condition:      cc.conditions,
+    conditionIcon:  mapVCIcon(cc.icon),
+    humidity:       Math.round(cc.humidity),
+    windKmh:        Math.round(cc.windspeed),
+    windDir:        windDirLabel(cc.winddir),
+    windDirDeg:     cc.winddir,
+    windGustKmh:    Math.round(cc.windgust || 0),
+    uvIndex:        Math.round(cc.uvindex),
+    pressure:       Math.round(cc.pressure),
+    visibility:     Math.round(cc.visibility * 10) / 10,
+    dewPointC:      Math.round((cc.dew ?? 0) * 10) / 10,
+    cloudCover:     Math.round(cc.cloudcover || 0),
+    sunrise:        formatTime12(cc.sunrise),
+    sunset:         formatTime12(cc.sunset),
+    // From today's day record (not in currentConditions)
+    precipProb:     Math.round(today.precipprob || 0),
+    precipType:     precipTypeLabel(today.preciptype || []),
+    severeRisk:     Math.round(today.severerisk || 0),
+    moonPhaseVal:   today.moonphase,
+    moonEmoji:      moon.emoji,
+    moonLabel:      moon.label,
+    description:    raw.description || today.description || '',
     forecast,
     hourly,
   };

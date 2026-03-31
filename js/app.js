@@ -1,17 +1,19 @@
-// ── Skye Weather App — Main Script (Live API) ─────────────────────────────────
+// ── Skye Weather App — Main Script ────────────────────────────────────────────
 
 // ─── App State ────────────────────────────────────────────────────────────────
-let settings       = loadSettings();
-let activeScreen   = 'home';
-let currentCity    = 'Reading';
-let currentData    = null;   // Last successfully fetched WeatherData
-let isLoading      = false;
-let searchDebounceTimer = null;
-let cacheAgeTimer  = null;
-let recentLocations = [];    // [{city, country, flag, tempC}]
+let settings         = loadSettings();
+let activeScreen     = 'home';
+let currentCity      = 'Reading';
+let currentData      = null;
+let isLoading        = false;
+let searchDebounceTimer  = null;
+let cacheAgeTimer    = null;
+let autoRefreshTimer = null;
+let recentLocations  = loadRecentLocations();
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
+  applyTheme();
   updateClock();
   setInterval(updateClock, 1000);
 
@@ -21,8 +23,25 @@ document.addEventListener('DOMContentLoaded', () => {
   setupSearch();
   setupSettings();
 
-  // Kick off initial weather fetch
-  loadWeather(currentCity);
+  // Try geolocation first, fall back to default city
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const coordCity = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+        // Show "My Location" in header immediately
+        document.querySelector('.city-name').textContent    = 'My Location';
+        document.querySelector('.country-name').textContent = '';
+        loadWeather(coordCity);
+      },
+      () => loadWeather(currentCity),
+      { timeout: 5000, maximumAge: 300000 }
+    );
+  } else {
+    loadWeather(currentCity);
+  }
+
+  startAutoRefresh();
 });
 
 // ─── Clock ────────────────────────────────────────────────────────────────────
@@ -46,6 +65,22 @@ function saveSettings() {
   localStorage.setItem('skye_settings', JSON.stringify(settings));
 }
 
+// ─── Recent locations persistence ─────────────────────────────────────────────
+function loadRecentLocations() {
+  try {
+    return JSON.parse(localStorage.getItem('skye_recent') || '[]');
+  } catch { return []; }
+}
+
+function saveRecentLocations() {
+  localStorage.setItem('skye_recent', JSON.stringify(recentLocations));
+}
+
+// ─── Theme ────────────────────────────────────────────────────────────────────
+function applyTheme() {
+  document.body.classList.toggle('light-theme', settings.theme === 'light');
+}
+
 // ─── Formatters ───────────────────────────────────────────────────────────────
 function formatTemp(celsius) {
   if (settings.tempUnit === 'F') return Math.round((celsius * 9) / 5 + 32);
@@ -66,6 +101,23 @@ function formatCacheAge(date) {
   return `${Math.floor(mins / 60)}h ago`;
 }
 
+function formatDewPoint(celsius) {
+  if (settings.tempUnit === 'F') return `${Math.round((celsius * 9) / 5 + 32)}°F`;
+  return `${celsius}°C`;
+}
+
+// ─── Auto-refresh ─────────────────────────────────────────────────────────────
+function startAutoRefresh() {
+  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
+  if (!settings.autoRefresh) return;
+  // Refresh every cacheDuration interval, skip if tab hidden
+  autoRefreshTimer = setInterval(() => {
+    if (!document.hidden && currentCity) {
+      loadWeather(currentCity);
+    }
+  }, settings.cacheDurationMinutes * 60 * 1000);
+}
+
 // ─── Weather Loading ──────────────────────────────────────────────────────────
 async function loadWeather(city, skipCacheCheck = false) {
   if (isLoading) return;
@@ -74,10 +126,7 @@ async function loadWeather(city, skipCacheCheck = false) {
   showHomeLoading();
 
   try {
-    // If skipCacheCheck, bust the in-memory cache
-    if (skipCacheCheck) {
-      delete apiCache[city.toLowerCase()];
-    }
+    if (skipCacheCheck) delete apiCache[city.toLowerCase()];
 
     const data = await fetchWeather(city);
     currentData = data;
@@ -86,14 +135,14 @@ async function loadWeather(city, skipCacheCheck = false) {
     renderForecast(data);
     startCacheAgeTimer(data.cachedAt);
 
-    // Update the location header with canonical name from API
-    document.querySelector('.city-name').textContent = data.city;
-    document.querySelector('.country-name').textContent = data.country;
-    document.querySelector('#screen-forecast .screen-title').textContent = data.city;
+    // Display city: if city looks like coords ("51.5074,-0.1278"), keep "My Location"
+    const isCoords = /^-?\d+\.\d+,-?\d+\.\d+$/.test(city);
+    const displayCity = isCoords ? 'My Location' : data.city;
+    document.querySelector('.city-name').textContent    = displayCity;
+    document.querySelector('.country-name').textContent = isCoords ? '' : data.country;
+    document.querySelector('#screen-forecast .screen-title').textContent = displayCity;
 
-    if (!data.fromCache) {
-      showToast('✓ Live data loaded');
-    }
+    if (!data.fromCache) showToast('✓ Live data loaded');
   } catch (err) {
     showHomeError(err.message, city);
   } finally {
@@ -113,21 +162,25 @@ function showHomeLoading() {
     <div class="skeleton" style="width:90px;height:14px;border-radius:8px;"></div>
   `;
 
-  // Cache pill
   const pill = document.getElementById('cache-pill');
   pill.className = 'pill pill-warning';
   document.getElementById('cache-label').textContent = 'Fetching fresh data…';
 
-  // Stats
-  ['stat-humidity', 'stat-wind', 'stat-uv'].forEach(id => {
-    document.getElementById(id).textContent = '—';
+  ['stat-humidity','stat-wind','stat-uv','stat-precip','stat-gust','stat-cloud'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '—';
   });
+  const windDirEl = document.getElementById('stat-wind-dir');
+  if (windDirEl) windDirEl.textContent = '';
 
-  // Hourly skeleton
   const hourlyEl = document.getElementById('hourly-scroll');
   hourlyEl.innerHTML = Array.from({ length: 7 }, () =>
     `<div class="skeleton" style="width:56px;height:96px;border-radius:12px;flex-shrink:0;"></div>`
   ).join('');
+
+  // Hide alert banner while loading
+  const banner = document.getElementById('alert-banner');
+  if (banner) banner.style.display = 'none';
 }
 
 function showHomeError(message, city) {
@@ -164,18 +217,65 @@ function renderHome(data) {
   // Cache pill
   const pill = document.getElementById('cache-pill');
   pill.className = 'pill pill-info';
-  const ageText = data.fromCache
+  document.getElementById('cache-label').textContent = data.fromCache
     ? `Cached · ${formatCacheAge(data.cachedAt)}`
     : 'Just updated';
-  document.getElementById('cache-label').textContent = ageText;
 
-  // Stats
+  // Stats row 1
   document.getElementById('stat-humidity').textContent = `${data.humidity}%`;
-  document.getElementById('stat-wind').textContent = formatWind(data.windKmh);
-  document.getElementById('stat-uv').textContent = data.uvIndex;
+  document.getElementById('stat-wind').textContent     = formatWind(data.windKmh);
+  document.getElementById('stat-uv').textContent       = data.uvIndex;
+
+  // Wind direction sub-label
+  const windDirEl = document.getElementById('stat-wind-dir');
+  if (windDirEl) windDirEl.textContent = data.windDir || '';
+
+  // Stats row 2
+  const precipEl = document.getElementById('stat-precip');
+  if (precipEl) precipEl.textContent = `${data.precipProb}%`;
+
+  const precipSubEl = document.getElementById('stat-precip-sub');
+  if (precipSubEl) precipSubEl.textContent = data.precipType || 'No precip';
+
+  const gustEl = document.getElementById('stat-gust');
+  if (gustEl) gustEl.textContent = formatWind(data.windGustKmh);
+
+  const cloudEl = document.getElementById('stat-cloud');
+  if (cloudEl) cloudEl.textContent = `${data.cloudCover}%`;
+
+  // Severe weather alert banner
+  renderAlertBanner(data);
 
   // Hourly
   renderHourly(data.hourly);
+}
+
+function renderAlertBanner(data) {
+  const banner = document.getElementById('alert-banner');
+  if (!banner) return;
+
+  if (data.severeRisk >= 20 && settings.notifySevereAlerts) {
+    const level     = data.severeRisk >= 50 ? 'danger' : 'warning';
+    const levelIcon = data.severeRisk >= 50 ? '🔴' : '🟡';
+    const desc      = data.description || data.condition || 'Severe weather possible';
+
+    banner.className    = `alert-banner alert-${level}`;
+    banner.style.display = 'flex';
+    banner.innerHTML    = `
+      <span class="alert-icon">${levelIcon}</span>
+      <span class="alert-text">${desc}</span>
+      <button class="alert-close" id="alert-close-btn" aria-label="Dismiss">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    `;
+    document.getElementById('alert-close-btn').addEventListener('click', () => {
+      banner.style.display = 'none';
+    });
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
 function renderHourly(hourly) {
@@ -202,9 +302,7 @@ function startCacheAgeTimer(cachedAt) {
   if (cacheAgeTimer) clearInterval(cacheAgeTimer);
   cacheAgeTimer = setInterval(() => {
     const label = document.getElementById('cache-label');
-    if (label && cachedAt) {
-      label.textContent = `Cached · ${formatCacheAge(cachedAt)}`;
-    }
+    if (label && cachedAt) label.textContent = `Cached · ${formatCacheAge(cachedAt)}`;
   }, 30_000);
 }
 
@@ -214,7 +312,7 @@ function setupRefresh() {
     if (isLoading) return;
     const btn = document.getElementById('btn-refresh');
     btn.classList.add('spinning');
-    await loadWeather(currentCity, true /* bypass cache */);
+    await loadWeather(currentCity, true);
     btn.classList.remove('spinning');
   });
 }
@@ -234,17 +332,25 @@ function renderForecast(data) {
     const lo = formatTemp(day.lo);
     const hi = formatTemp(day.hi);
     const leftPct  = ((lo - absMin) / range) * 100;
-    const widthPct = ((hi - lo)   / range) * 100;
+    const widthPct = ((hi - lo) / range) * 100;
+
+    // Precipitation bar width
+    const precipPct = day.precipProb;
+    const precipLabel = day.precipProb > 0 ? `🌧 ${day.precipProb}%` : '';
 
     const row = document.createElement('div');
     row.className = 'forecast-row';
     row.innerHTML = `
       <span class="forecast-day">${day.day}</span>
-      <span class="forecast-icon">${day.icon}</span>
+      <div class="forecast-icon-wrap">
+        <span class="forecast-icon">${day.icon}</span>
+        ${precipLabel ? `<span class="forecast-precip">${precipLabel}</span>` : ''}
+      </div>
       <div class="bar-wrapper">
         <div class="bar-track">
           <div class="bar-fill" style="left:${Math.max(0, leftPct)}%;width:${Math.max(8, widthPct)}%"></div>
         </div>
+        ${precipPct > 0 ? `<div class="precip-bar-track"><div class="precip-bar-fill" style="width:${precipPct}%"></div></div>` : ''}
       </div>
       <div class="forecast-temps">
         <span class="temp-lo">${lo}°</span>
@@ -254,41 +360,58 @@ function renderForecast(data) {
     list.appendChild(row);
   });
 
-  // ── Detail cards — update by stable IDs ──
-  const uvEl    = document.getElementById('detail-uv');
-  const uvBar   = document.getElementById('uv-bar');
-  const uvDot   = document.getElementById('uv-dot');
+  // Update subtitle
+  const subtitle = document.querySelector('#screen-forecast .screen-subtitle');
+  if (subtitle) subtitle.textContent = `${data.forecast.length}-day forecast`;
 
-  if (uvEl)  uvEl.textContent = data.uvIndex;
+  // ── Detail cards by ID ──
+  const uvEl  = document.getElementById('detail-uv');
+  const uvBar = document.getElementById('uv-bar');
+  const uvDot = document.getElementById('uv-dot');
+  const uvSub = document.getElementById('detail-uv-sub');
 
+  if (uvEl)  uvEl.textContent  = data.uvIndex;
   const uvPct = Math.min(100, (data.uvIndex / 11) * 100);
   if (uvBar) uvBar.style.width = `${uvPct}%`;
   if (uvDot) uvDot.style.left  = `${uvPct}%`;
-
-  // Sub-labels for the 4 detail cards — index-based, guarded
-  const detailCards = document.querySelectorAll('.detail-card');
-
-  // Card 0 — UV Index sub
-  const uvSub = detailCards[0]?.querySelector('.detail-sub');
   if (uvSub) uvSub.textContent = uvLabel(data.uvIndex);
 
-  // Card 1 — Sunrise / Sunset
-  const sunriseVal = detailCards[1]?.querySelector('.detail-value');
-  const sunriseSub = detailCards[1]?.querySelector('.detail-sub');
+  // Sunrise / Sunset
+  const sunriseVal = document.getElementById('detail-sunrise-val');
+  const sunriseSub = document.getElementById('detail-sunrise-sub');
   if (sunriseVal) sunriseVal.textContent = data.sunrise || '—';
   if (sunriseSub) sunriseSub.textContent = data.sunset ? `Sunset ${data.sunset}` : '—';
 
-  // Card 2 — Visibility
-  const visVal = detailCards[2]?.querySelector('.detail-value');
+  // Visibility
+  const visVal = document.getElementById('detail-vis-val');
+  const visSub = document.getElementById('detail-vis-sub');
   if (visVal) visVal.textContent = data.visibility != null ? `${data.visibility} km` : '—';
+  if (visSub) visSub.textContent = visibilityLabel(data.visibility);
 
-  // Card 3 — Pressure
-  const pressVal = detailCards[3]?.querySelector('.detail-value');
+  // Pressure
+  const pressVal = document.getElementById('detail-pressure-val');
+  const pressSub = document.getElementById('detail-pressure-sub');
   if (pressVal) {
     pressVal.textContent = settings.pressureUnit === 'inhg'
       ? `${(data.pressure * 0.02953).toFixed(2)} inHg`
       : `${data.pressure} hPa`;
   }
+  if (pressSub) pressSub.textContent = pressureLabel(data.pressure);
+
+  // Cloud Cover
+  const cloudVal = document.getElementById('detail-cloud-val');
+  const cloudSub = document.getElementById('detail-cloud-sub');
+  if (cloudVal) cloudVal.textContent = `${data.cloudCover}%`;
+  if (cloudSub) {
+    const c = data.cloudCover;
+    cloudSub.textContent = c < 20 ? 'Clear' : c < 50 ? 'Partly cloudy' : c < 85 ? 'Mostly cloudy' : 'Overcast';
+  }
+
+  // Moon Phase
+  const moonVal = document.getElementById('detail-moon-val');
+  const moonSub = document.getElementById('detail-moon-sub');
+  if (moonVal) moonVal.textContent = data.moonEmoji || '🌑';
+  if (moonSub) moonSub.textContent = data.moonLabel || '';
 }
 
 // ─── Search Screen ────────────────────────────────────────────────────────────
@@ -296,14 +419,12 @@ function setupSearch() {
   const input       = document.getElementById('search-input');
   const rightIcon   = document.getElementById('search-right-icon');
   const clearBtn    = document.getElementById('clear-search-btn');
-
   const secRecent   = document.getElementById('section-recent');
   const secPopular  = document.getElementById('section-popular');
   const secResults  = document.getElementById('section-results');
   const resultsList = document.getElementById('results-list');
   const noResults   = document.getElementById('no-results');
 
-  // Populate recent & popular with static data (no temp yet)
   renderStaticLocationList(document.getElementById('recent-list'), recentLocations);
   renderStaticLocationList(document.getElementById('popular-list'), POPULAR_LOCATIONS_STATIC);
 
@@ -311,7 +432,7 @@ function setupSearch() {
     const q = input.value.trim();
 
     if (q.length === 0) {
-      rightIcon.style.display = 'none';
+      rightIcon.style.display  = 'none';
       secRecent.style.display  = 'block';
       secPopular.style.display = 'block';
       secResults.style.display = 'none';
@@ -324,9 +445,7 @@ function setupSearch() {
     secResults.style.display = 'block';
     noResults.style.display  = 'none';
 
-    // Show spinner immediately
     showSearchSpinner(resultsList);
-
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = setTimeout(() => performSearch(q, resultsList, noResults), 300);
   });
@@ -355,17 +474,12 @@ function showSearchSpinner(container) {
 }
 
 async function performSearch(query, resultsList, noResults) {
-  // Search against the backend by just trying to fetch the city
-  // The backend only exposes /weather/{city} so we do a live fetch
   try {
     const data = await fetchWeather(query);
     noResults.style.display = 'none';
-
-    // Build a location entry from the response
     const loc = { city: data.city, country: data.country, flag: '📍', tempC: data.temperatureC };
     renderLocationList(resultsList, [loc], query);
   } catch {
-    // If not found, show no-results
     resultsList.innerHTML = '';
     noResults.style.display = 'flex';
     noResults.querySelector('.no-results-text').textContent = `No results for '${query}'`;
@@ -378,25 +492,19 @@ function renderStaticLocationList(container, locations) {
     container.innerHTML = '<div style="padding:16px;text-align:center;color:var(--color-text-muted);font-size:13px;">No recent locations</div>';
     return;
   }
-  locations.forEach(loc => {
-    const row = buildLocationRow(loc, '');
-    container.appendChild(row);
-  });
+  locations.forEach(loc => container.appendChild(buildLocationRow(loc, '')));
 }
 
 function renderLocationList(container, locations, query = '') {
   container.innerHTML = '';
-  locations.forEach(loc => {
-    const row = buildLocationRow(loc, query);
-    container.appendChild(row);
-  });
+  locations.forEach(loc => container.appendChild(buildLocationRow(loc, query)));
 }
 
 function buildLocationRow(loc, query) {
   const row = document.createElement('div');
   row.className = 'location-row';
 
-  let cityHtml = loc.city || loc.city;
+  let cityHtml = loc.city || '';
   if (query) {
     const idx = (loc.city || '').toLowerCase().indexOf(query.toLowerCase());
     if (idx !== -1) {
@@ -427,16 +535,21 @@ function buildLocationRow(loc, query) {
 async function selectLocation(loc) {
   navigateTo('home');
   currentCity = loc.city;
-  // Update header immediately
-  document.querySelector('.city-name').textContent = loc.city;
+  document.querySelector('.city-name').textContent    = loc.city;
   document.querySelector('.country-name').textContent = loc.country || '';
   await loadWeather(loc.city);
 
-  // Track in recent
+  // Update recent locations and persist
   const existing = recentLocations.findIndex(r => r.city.toLowerCase() === loc.city.toLowerCase());
   if (existing !== -1) recentLocations.splice(existing, 1);
-  recentLocations.unshift({ city: loc.city, country: loc.country, flag: loc.flag || '📍', tempC: currentData?.temperatureC });
+  recentLocations.unshift({
+    city:    loc.city,
+    country: loc.country,
+    flag:    loc.flag || '📍',
+    tempC:   currentData?.temperatureC,
+  });
   if (recentLocations.length > 5) recentLocations.pop();
+  saveRecentLocations();
 
   renderStaticLocationList(document.getElementById('recent-list'), recentLocations);
 }
@@ -450,6 +563,8 @@ function applySettings() {
   document.getElementById('toggle-daily-input').checked   = settings.notifyDailySummary;
   document.getElementById('toggle-alerts-input').checked  = settings.notifySevereAlerts;
   document.getElementById('toggle-refresh-input').checked = settings.autoRefresh;
+  const themeToggle = document.getElementById('toggle-theme-input');
+  if (themeToggle) themeToggle.checked = settings.theme === 'light';
 }
 
 function formatWindLabel() {
@@ -486,7 +601,7 @@ function setupSettings() {
 
   document.getElementById('row-pressure-unit').addEventListener('click', () => {
     openSheet('Pressure Unit', [
-      { label: 'Hectopascal (hPa)',   value: 'hpa'  },
+      { label: 'Hectopascal (hPa)',      value: 'hpa'  },
       { label: 'Inch of mercury (inHg)', value: 'inhg' },
     ], settings.pressureUnit, (val) => {
       settings.pressureUnit = val;
@@ -505,6 +620,7 @@ function setupSettings() {
     ], settings.cacheDurationMinutes, (val) => {
       settings.cacheDurationMinutes = val;
       saveSettings(); applySettings();
+      startAutoRefresh();
       showToast(`Cache duration set to ${val} min`);
     });
   });
@@ -518,14 +634,26 @@ function setupSettings() {
   document.getElementById('toggle-alerts-input').addEventListener('change', (e) => {
     settings.notifySevereAlerts = e.target.checked;
     saveSettings();
+    if (currentData) renderAlertBanner(currentData);
     showToast(e.target.checked ? '⚠️ Severe alerts on' : '🔕 Severe alerts off');
   });
 
   document.getElementById('toggle-refresh-input').addEventListener('change', (e) => {
     settings.autoRefresh = e.target.checked;
     saveSettings();
+    startAutoRefresh();
     showToast(e.target.checked ? '🔄 Auto-refresh on' : 'Auto-refresh off');
   });
+
+  const themeToggle = document.getElementById('toggle-theme-input');
+  if (themeToggle) {
+    themeToggle.addEventListener('change', (e) => {
+      settings.theme = e.target.checked ? 'light' : 'dark';
+      saveSettings();
+      applyTheme();
+      showToast(e.target.checked ? '☀️ Light mode on' : '🌙 Dark mode on');
+    });
+  }
 
   document.getElementById('row-clear-cache').addEventListener('click', showConfirmSheet);
 }
@@ -567,7 +695,6 @@ function showConfirmSheet() {
   document.getElementById('confirm-cancel').onclick = closeSheet;
   document.getElementById('sheet-overlay').onclick  = closeSheet;
   document.getElementById('confirm-clear').onclick  = () => {
-    // Clear in-memory cache
     Object.keys(apiCache).forEach(k => delete apiCache[k]);
     closeSheet();
     showToast('🗑 Cache cleared');
