@@ -1,0 +1,16 @@
+.header {
+  padding: var(--space-2) 0 var(--space-4);
+}
+
+.title {
+  font-size: var(--text-heading-1);
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.subtitle {
+  font-size: var(--text-body-sm);
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}

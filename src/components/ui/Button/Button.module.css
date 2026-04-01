@@ -1,0 +1,20 @@
+.primary {
+  background: var(--color-accent-primary);
+  color: var(--color-bg-page);
+}
+
+.primary:hover { opacity: 0.9; }
+
+.outlined {
+  background: transparent;
+  color: var(--color-accent-primary);
+  border: 1px solid var(--color-accent-primary);
+}
+
+.danger {
+  background: rgba(239, 68, 68, 0.12);
+  color: var(--color-danger);
+  border: 0.5px solid rgba(239, 68, 68, 0.3);
+}
+
+.danger:hover { background: rgba(239, 68, 68, 0.18); }

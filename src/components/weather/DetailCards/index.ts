@@ -1,0 +1,1 @@
+export { DetailCards } from './DetailCards';

@@ -1,0 +1,79 @@
+.group {
+  background: var(--color-bg-surface);
+  border: 0.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: var(--space-1);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  height: 56px;
+  padding: 0 var(--space-4);
+  gap: var(--space-3);
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.row:hover { background: var(--color-bg-elevated); }
+
+.dangerRow:hover { background: rgba(239, 68, 68, 0.05); }
+
+.icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.rowLabel {
+  flex: 1;
+  font-size: var(--text-body);
+  color: var(--color-text-primary);
+}
+
+.dangerLabel {
+  color: var(--color-danger);
+}
+
+.control {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.value {
+  font-size: var(--text-body-sm);
+  color: var(--color-text-muted);
+}
+
+.chevron {
+  color: var(--color-text-muted);
+}
+
+.divider {
+  height: 0.5px;
+  background: var(--color-border-subtle);
+  margin: 0 var(--space-4);
+}
+
+.appInfo {
+  margin-top: var(--space-8);
+  text-align: center;
+}
+
+.appVersion {
+  font-size: var(--text-body-sm);
+  color: var(--color-text-muted);
+}
+
+.appAttrib {
+  font-size: var(--text-label);
+  color: var(--color-text-disabled);
+  margin-top: 4px;
+}

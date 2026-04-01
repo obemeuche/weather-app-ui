@@ -1,0 +1,1 @@
+export { CachePill } from './CachePill';

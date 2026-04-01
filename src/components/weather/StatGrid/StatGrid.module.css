@@ -1,0 +1,48 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+}
+
+.card {
+  background: var(--color-bg-surface);
+  border: 0.5px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: background 150ms, transform 150ms;
+}
+
+.card:hover {
+  background: var(--color-bg-elevated);
+  transform: translateY(-1px);
+}
+
+.icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.value {
+  font-size: 15px;
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+}
+
+.label {
+  font-size: var(--text-label);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.sub {
+  font-size: var(--text-caption);
+  color: var(--color-text-muted);
+  letter-spacing: 0.3px;
+  text-align: center;
+}

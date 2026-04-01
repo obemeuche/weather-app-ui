@@ -1,0 +1,131 @@
+import { useEffect, useState } from 'react';
+import { PageWrapper } from '../components/layout/PageWrapper';
+import { WeatherCard, WeatherCardSkeleton } from '../components/weather/WeatherCard';
+import { CachePill } from '../components/weather/CachePill';
+import { AlertBanner } from '../components/weather/AlertBanner';
+import { StatGrid, StatGridSkeleton } from '../components/weather/StatGrid';
+import { HourlyStrip, HourlyStripSkeleton } from '../components/weather/HourlyStrip';
+import { useWeather } from '../hooks/useWeather';
+import { useSettings } from '../hooks/useSettings';
+import { useLocation } from '../hooks/useLocation';
+
+export function HomeScreen() {
+  const { currentData, isLoading, error, loadWeather, currentCity } = useWeather();
+  const { settings } = useSettings();
+  const { requestGeolocation } = useLocation();
+  const [displayCity, setDisplayCity] = useState('Reading');
+  const [displayCountry, setDisplayCountry] = useState('UK');
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Initial load with geolocation
+  useEffect(() => {
+    requestGeolocation(
+      (coordCity) => {
+        setDisplayCity('My Location');
+        setDisplayCountry('');
+        loadWeather(coordCity);
+      },
+      () => loadWeather('Reading'),
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Sync display name from fetched data
+  useEffect(() => {
+    if (!currentData) return;
+    const isCoords = /^-?\d+\.\d+,-?\d+\.\d+$/.test(currentCity);
+    setDisplayCity(isCoords ? 'My Location' : currentData.city);
+    setDisplayCountry(isCoords ? '' : currentData.country);
+  }, [currentData, currentCity]);
+
+  const handleRefresh = async () => {
+    if (refreshing || isLoading) return;
+    setRefreshing(true);
+    await loadWeather(currentCity, true);
+    setRefreshing(false);
+  };
+
+  return (
+    <PageWrapper>
+      {/* Status Bar */}
+      <div className="status-bar">
+        <span className="status-time" id="status-time">—</span>
+        <div className="status-icons">
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
+            <rect x="0" y="4" width="3" height="8" rx="1" opacity="0.4"/>
+            <rect x="4" y="2" width="3" height="10" rx="1" opacity="0.6"/>
+            <rect x="8" y="0" width="3" height="12" rx="1" opacity="0.8"/>
+            <rect x="12" y="0" width="3" height="12" rx="1"/>
+          </svg>
+          <div className="battery-icon"><div className="battery-fill" style={{ width: '78%' }} /></div>
+        </div>
+      </div>
+
+      {/* Location Header */}
+      <div className="location-header">
+        <div className="location-chip">
+          <svg className="pin-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+          </svg>
+          <span className="city-name">{displayCity}</span>
+          <span className="country-name">{displayCountry}</span>
+        </div>
+        <button
+          className={`icon-btn${refreshing ? ' spinning' : ''}`}
+          onClick={handleRefresh}
+          title="Refresh weather"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <polyline points="23 4 23 10 17 10"/>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Hero */}
+      {isLoading || !currentData ? (
+        error ? (
+          <div className="error-card">
+            <div style={{ fontSize: 32, marginBottom: 8 }}>⚠️</div>
+            <p className="error-text">Couldn't load weather</p>
+            <p className="error-sub">{error}</p>
+            <button
+              className="btn btn-outlined"
+              style={{ marginTop: 16, width: 'auto', padding: '0 24px' }}
+              onClick={() => loadWeather(currentCity, true)}
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <WeatherCardSkeleton />
+        )
+      ) : (
+        <WeatherCard data={currentData} />
+      )}
+
+      {/* Cache Pill */}
+      <CachePill
+        fromCache={currentData?.fromCache ?? false}
+        cachedAt={currentData?.cachedAt ?? null}
+        isLoading={isLoading}
+      />
+
+      {/* Alert Banner */}
+      {currentData && (
+        <AlertBanner
+          severeRisk={currentData.severeRisk}
+          description={currentData.description}
+          enabled={settings.notifySevereAlerts}
+        />
+      )}
+
+      {/* Stats */}
+      {isLoading || !currentData ? <StatGridSkeleton /> : <StatGrid data={currentData} />}
+
+      {/* Hourly */}
+      <div className="section-label">Hourly Forecast</div>
+      {isLoading || !currentData ? <HourlyStripSkeleton /> : <HourlyStrip hourly={currentData.hourly} />}
+    </PageWrapper>
+  );
+}
