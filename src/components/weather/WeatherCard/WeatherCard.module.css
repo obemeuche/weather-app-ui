@@ -18,6 +18,33 @@
   justify-content: center;
 }
 
+.locationBlock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  margin-bottom: var(--space-3);
+}
+
+.locationPin {
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+}
+
+.cityName {
+  font-size: 28px;
+  font-weight: var(--weight-medium);
+  color: var(--color-text-primary);
+  letter-spacing: -0.5px;
+}
+
+.countryName {
+  font-size: var(--text-body);
+  color: var(--color-text-muted);
+}
+
 .tempBlock {
   display: flex;
   align-items: flex-start;
@@ -27,17 +54,17 @@
 
 .temperature {
   font-family: var(--font-display);
-  font-size: var(--text-display-xl);
+  font-size: 76px;
   color: var(--color-text-primary);
   line-height: 1;
-  letter-spacing: -4px;
+  letter-spacing: -3px;
 }
 
 .unit {
   font-family: var(--font-display);
-  font-size: var(--text-display-md);
+  font-size: 30px;
   color: var(--color-text-muted);
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 .condition {

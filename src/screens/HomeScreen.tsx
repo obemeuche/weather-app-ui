@@ -8,6 +8,7 @@ import { HourlyStrip, HourlyStripSkeleton } from '../components/weather/HourlySt
 import { useWeather } from '../hooks/useWeather';
 import { useSettings } from '../hooks/useSettings';
 import { useLocation } from '../hooks/useLocation';
+import styles from './HomeScreen.module.css';
 
 export function HomeScreen() {
   const { currentData, isLoading, error, loadWeather, currentCity } = useWeather();
@@ -17,7 +18,6 @@ export function HomeScreen() {
   const [displayCountry, setDisplayCountry] = useState('UK');
   const [refreshing, setRefreshing] = useState(false);
 
-  // Initial load with geolocation
   useEffect(() => {
     requestGeolocation(
       (coordCity) => {
@@ -30,7 +30,6 @@ export function HomeScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync display name from fetched data
   useEffect(() => {
     if (!currentData) return;
     const isCoords = /^-?\d+\.\d+,-?\d+\.\d+$/.test(currentCity);
@@ -61,15 +60,8 @@ export function HomeScreen() {
         </div>
       </div>
 
-      {/* Location Header */}
-      <div className="location-header">
-        <div className="location-chip">
-          <svg className="pin-icon" width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-          </svg>
-          <span className="city-name">{displayCity}</span>
-          <span className="country-name">{displayCountry}</span>
-        </div>
+      {/* Floating refresh button — top right */}
+      <div className={styles.refreshRow}>
         <button
           className={`icon-btn${refreshing ? ' spinning' : ''}`}
           onClick={handleRefresh}
@@ -82,7 +74,7 @@ export function HomeScreen() {
         </button>
       </div>
 
-      {/* Hero */}
+      {/* Hero — location is now inside WeatherCard */}
       {isLoading || !currentData ? (
         error ? (
           <div className="error-card">
@@ -101,7 +93,11 @@ export function HomeScreen() {
           <WeatherCardSkeleton />
         )
       ) : (
-        <WeatherCard data={currentData} />
+        <WeatherCard
+          data={currentData}
+          displayCity={displayCity}
+          displayCountry={displayCountry}
+        />
       )}
 
       {/* Cache Pill */}

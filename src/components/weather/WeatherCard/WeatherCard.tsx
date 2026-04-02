@@ -19,9 +19,11 @@ export function getWeatherIcon(name: string): string {
 
 interface WeatherCardProps {
   data: WeatherData;
+  displayCity: string;
+  displayCountry: string;
 }
 
-export function WeatherCard({ data }: WeatherCardProps) {
+export function WeatherCard({ data, displayCity, displayCountry }: WeatherCardProps) {
   const { settings } = useSettings();
   const iconHtml = getWeatherIcon(data.conditionIcon);
 
@@ -33,6 +35,15 @@ export function WeatherCard({ data }: WeatherCardProps) {
           dangerouslySetInnerHTML={{ __html: iconHtml }}
         />
       </div>
+
+      <div className={styles.locationBlock}>
+        <svg className={styles.locationPin} width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+        </svg>
+        <span className={styles.cityName}>{displayCity}</span>
+        {displayCountry && <span className={styles.countryName}>{displayCountry}</span>}
+      </div>
+
       <div className={styles.tempBlock}>
         <span className={`temperature ${styles.temperature}`}>
           {formatTemp(data.temperatureC, settings)}
@@ -51,6 +62,7 @@ export function WeatherCardSkeleton() {
   return (
     <div className={`hero-block ${styles.heroBlock}`}>
       <Skeleton width={80} height={80} borderRadius="50%" style={{ marginBottom: 16 }} />
+      <Skeleton width={100} height={14} borderRadius="8px" style={{ marginBottom: 10 }} />
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4, marginBottom: 8 }}>
         <Skeleton width={140} height={80} borderRadius="12px" />
       </div>
