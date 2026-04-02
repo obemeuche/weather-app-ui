@@ -30,6 +30,7 @@
   font-weight: var(--weight-medium);
   color: var(--color-text-primary);
   letter-spacing: -0.6px;
+  text-transform: capitalize;
 }
 
 .countryName {
