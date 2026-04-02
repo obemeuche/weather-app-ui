@@ -8,7 +8,6 @@ import { HourlyStrip, HourlyStripSkeleton } from '../components/weather/HourlySt
 import { useWeather } from '../hooks/useWeather';
 import { useSettings } from '../hooks/useSettings';
 import { useLocation } from '../hooks/useLocation';
-import styles from './HomeScreen.module.css';
 
 export function HomeScreen() {
   const { currentData, isLoading, error, loadWeather, currentCity } = useWeather();
@@ -16,7 +15,6 @@ export function HomeScreen() {
   const { requestGeolocation } = useLocation();
   const [displayCity, setDisplayCity] = useState('Reading');
   const [displayCountry, setDisplayCountry] = useState('UK');
-  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     requestGeolocation(
@@ -37,44 +35,9 @@ export function HomeScreen() {
     setDisplayCountry(isCoords ? '' : currentData.country);
   }, [currentData, currentCity]);
 
-  const handleRefresh = async () => {
-    if (refreshing || isLoading) return;
-    setRefreshing(true);
-    await loadWeather(currentCity, true);
-    setRefreshing(false);
-  };
-
   return (
     <PageWrapper>
-      {/* Status Bar */}
-      <div className="status-bar">
-        <span className="status-time" id="status-time">—</span>
-        <div className="status-icons">
-          <svg width="16" height="12" viewBox="0 0 16 12" fill="currentColor">
-            <rect x="0" y="4" width="3" height="8" rx="1" opacity="0.4"/>
-            <rect x="4" y="2" width="3" height="10" rx="1" opacity="0.6"/>
-            <rect x="8" y="0" width="3" height="12" rx="1" opacity="0.8"/>
-            <rect x="12" y="0" width="3" height="12" rx="1"/>
-          </svg>
-          <div className="battery-icon"><div className="battery-fill" style={{ width: '78%' }} /></div>
-        </div>
-      </div>
-
-      {/* Floating refresh button — top right */}
-      <div className={styles.refreshRow}>
-        <button
-          className={`icon-btn${refreshing ? ' spinning' : ''}`}
-          onClick={handleRefresh}
-          title="Refresh weather"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <polyline points="23 4 23 10 17 10"/>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-          </svg>
-        </button>
-      </div>
-
-      {/* Hero — location is now inside WeatherCard */}
+      {/* Hero */}
       {isLoading || !currentData ? (
         error ? (
           <div className="error-card">

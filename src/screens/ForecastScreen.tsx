@@ -13,13 +13,6 @@ export function ForecastScreen() {
 
   return (
     <PageWrapper>
-      <div className="status-bar">
-        <span className="status-time" id="status-time-forecast">—</span>
-        <div className="status-icons">
-          <div className="battery-icon"><div className="battery-fill" style={{ width: '78%' }} /></div>
-        </div>
-      </div>
-
       <ScreenHeader title={title} subtitle={subtitle} />
 
       {currentData ? (

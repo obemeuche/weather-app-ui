@@ -32,15 +32,8 @@ export function SearchScreen({ onNavigateHome }: SearchScreenProps) {
 
   return (
     <PageWrapper>
-      <div className="status-bar">
-        <span className="status-time" id="status-time-search">—</span>
-        <div className="status-icons">
-          <div className="battery-icon"><div className="battery-fill" style={{ width: '78%' }} /></div>
-        </div>
-      </div>
-
-      <div style={{ padding: 'var(--space-2) 0 var(--space-4)' }}>
-        <h1 style={{ fontSize: 'var(--text-heading-1)', fontWeight: 'var(--weight-medium)', color: 'var(--color-text-primary)', marginBottom: 4 }}>
+      <div style={{ padding: 'var(--space-6) 0 var(--space-4)' }}>
+        <h1 style={{ fontSize: 'var(--text-heading-1)', fontWeight: 'var(--weight-medium)', color: 'var(--color-text-primary)' }}>
           Search
         </h1>
       </div>
