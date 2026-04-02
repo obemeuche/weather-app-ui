@@ -26,18 +26,11 @@
   margin-bottom: var(--space-3);
 }
 
-.locationPin {
-  color: var(--color-text-secondary);
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-}
-
 .cityName {
-  font-size: 28px;
+  font-size: 34px;
   font-weight: var(--weight-medium);
   color: var(--color-text-primary);
-  letter-spacing: -0.5px;
+  letter-spacing: -0.6px;
 }
 
 .countryName {
