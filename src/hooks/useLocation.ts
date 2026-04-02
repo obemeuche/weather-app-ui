@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { DEFAULT_CITY } from '../utils/constants';
 
 interface UseLocationReturn {
   requestGeolocation: (
@@ -31,4 +30,4 @@ export function useLocation(): UseLocationReturn {
   return { requestGeolocation };
 }
 
-export { DEFAULT_CITY };
+
