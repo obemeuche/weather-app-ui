@@ -6,6 +6,7 @@ body:not(.light-theme) {
   --color-bg-surface:  rgba(255, 255, 255, 0.05);
   --color-bg-elevated: rgba(255, 255, 255, 0.08);
   --color-bg-overlay:  rgba(0, 0, 0, 0.65);
+  --color-nav-bg:      rgba(10, 15, 30, 0.92);
 
   /* ── Accent ── */
   --color-accent-primary:   #7EC8E3;
@@ -82,6 +83,7 @@ body.light-theme {
   --color-bg-surface:  rgba(255, 255, 255, 0.80);
   --color-bg-elevated: rgba(255, 255, 255, 0.95);
   --color-bg-overlay:  rgba(0, 0, 0, 0.45);
+  --color-nav-bg:      rgba(240, 244, 248, 0.92);
 
   --color-accent-primary:   #2D8FB5;
   --color-accent-secondary: #7C3AED;
