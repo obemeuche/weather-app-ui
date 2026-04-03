@@ -1,8 +1,8 @@
 import styles from './StatGrid.module.css';
-import type { WeatherData } from '../../../api/types';
-import { useSettings } from '../../../hooks/useSettings';
-import { formatWind } from '../../../utils/formatters';
-import { Skeleton } from '../../ui/Skeleton';
+import type { WeatherData } from '../../api/types';
+import { useSettings } from '../../hooks/useSettings';
+import { formatWind } from '../../utils/formatters';
+import { Skeleton } from '../ui/Skeleton';
 
 interface StatGridProps {
   data: WeatherData;

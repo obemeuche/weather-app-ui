@@ -1,7 +1,7 @@
 import styles from './DetailCards.module.css';
-import type { WeatherData } from '../../../api/types';
-import { useSettings } from '../../../hooks/useSettings';
-import { uvLabel, pressureLabel, visibilityLabel } from '../../../utils/formatters';
+import type { WeatherData } from '../../api/types';
+import { useSettings } from '../../hooks/useSettings';
+import { uvLabel, pressureLabel, visibilityLabel } from '../../utils/formatters';
 
 interface DetailCardsProps {
   data: WeatherData;

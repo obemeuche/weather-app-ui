@@ -1,8 +1,8 @@
 import styles from './WeatherCard.module.css';
-import type { WeatherData } from '../../../api/types';
-import { useSettings } from '../../../hooks/useSettings';
-import { formatTemp } from '../../../utils/formatters';
-import { Skeleton } from '../../ui/Skeleton';
+import type { WeatherData } from '../../api/types';
+import { useSettings } from '../../hooks/useSettings';
+import { formatTemp } from '../../utils/formatters';
+import { Skeleton } from '../ui/Skeleton';
 
 const WEATHER_ICONS: Record<string, string> = {
   sunny: `<svg width="80" height="80" viewBox="0 0 80 80" fill="none"><circle cx="40" cy="40" r="18" fill="#FCD34D" opacity="0.95"/><g stroke="#FCD34D" stroke-width="3" stroke-linecap="round"><line x1="40" y1="8" x2="40" y2="16"/><line x1="40" y1="64" x2="40" y2="72"/><line x1="8" y1="40" x2="16" y2="40"/><line x1="64" y1="40" x2="72" y2="40"/><line x1="17.4" y1="17.4" x2="23.1" y2="23.1"/><line x1="56.9" y1="56.9" x2="62.6" y2="62.6"/><line x1="62.6" y1="17.4" x2="56.9" y2="23.1"/><line x1="23.1" y1="56.9" x2="17.4" y2="62.6"/></g></svg>`,

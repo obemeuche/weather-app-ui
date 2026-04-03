@@ -1,7 +1,7 @@
 import styles from './SearchResults.module.css';
-import type { Location } from '../../../api/types';
-import { LocationRow } from '../LocationRow';
-import { Skeleton } from '../../ui/Skeleton';
+import type { Location } from '../../api/types';
+import { LocationRow } from './LocationRow';
+import { Skeleton } from '../ui/Skeleton';
 
 interface SearchResultsProps {
   query: string;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import styles from './CachePill.module.css';
-import { formatCacheAge } from '../../../utils/formatters';
+import { formatCacheAge } from '../../utils/formatters';
 
 interface CachePillProps {
   fromCache: boolean;

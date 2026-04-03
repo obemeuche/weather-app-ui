@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import styles from './HourlyStrip.module.css';
-import type { HourlyItem } from '../../../api/types';
-import { useSettings } from '../../../hooks/useSettings';
-import { formatTemp } from '../../../utils/formatters';
-import { Skeleton } from '../../ui/Skeleton';
+import type { HourlyItem } from '../../api/types';
+import { useSettings } from '../../hooks/useSettings';
+import { formatTemp } from '../../utils/formatters';
+import { Skeleton } from '../ui/Skeleton';
 
 interface HourlyStripProps {
   hourly: HourlyItem[];

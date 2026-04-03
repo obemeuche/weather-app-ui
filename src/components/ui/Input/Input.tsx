@@ -1,8 +1,0 @@
-import type React from 'react';
-import styles from './Input.module.css';
-
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
-
-export function Input({ className = '', ...rest }: InputProps) {
-  return <input className={`${styles.input} ${className}`} {...rest} />;
-}

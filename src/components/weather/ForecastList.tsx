@@ -1,7 +1,7 @@
 import styles from './ForecastList.module.css';
-import type { ForecastDay } from '../../../api/types';
-import { useSettings } from '../../../hooks/useSettings';
-import { formatTemp } from '../../../utils/formatters';
+import type { ForecastDay } from '../../api/types';
+import { useSettings } from '../../hooks/useSettings';
+import { formatTemp } from '../../utils/formatters';
 
 interface ForecastListProps {
   forecast: ForecastDay[];

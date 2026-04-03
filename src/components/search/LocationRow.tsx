@@ -1,7 +1,7 @@
 import styles from './LocationRow.module.css';
-import type { Location } from '../../../api/types';
-import { useSettings } from '../../../hooks/useSettings';
-import { formatTemp } from '../../../utils/formatters';
+import type { Location } from '../../api/types';
+import { useSettings } from '../../hooks/useSettings';
+import { formatTemp } from '../../utils/formatters';
 
 interface LocationRowProps {
   location: Location;
