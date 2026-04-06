@@ -3,9 +3,19 @@ import type { Location } from '../api/types';
 import { searchLocation } from '../api/searchApi';
 import { useSettings } from './useSettings';
 
+function isValidLocation(val: unknown): val is Location {
+  if (!val || typeof val !== 'object') return false;
+  const loc = val as Record<string, unknown>;
+  return typeof loc.city === 'string' && loc.city.trim().length > 0
+    && typeof loc.country === 'string'
+    && typeof loc.flag === 'string';
+}
+
 function loadRecentLocations(): Location[] {
   try {
-    return JSON.parse(localStorage.getItem('skye_recent') || '[]') as Location[];
+    const parsed = JSON.parse(localStorage.getItem('skye_recent') || '[]');
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(isValidLocation);
   } catch {
     return [];
   }
